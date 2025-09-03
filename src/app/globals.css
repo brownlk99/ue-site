@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=GFS+Didot&display=swap');
+@import "tailwindcss";
+
+
+:root {
+  --winter-primary: #204268;     
+  --winter-secondary: #669ed6;  
+  --winter-accent: #bed9dc;       
+  --winter-highlight: #eb8a21;   
+  --winter-text: #f0f0f0;       
+  --winter-muted: #a8a8a8;      
+  --winter-ice: #bed9dc;        
+  --winter-frost: rgba(255, 255, 255, 0.1); 
+}
+
+.font-didot {
+  font-family: 'GFS Didot', serif;
+}
+
+@theme inline {
+  --color-winter-primary: var(--winter-primary);
+  --color-winter-secondary: var(--winter-secondary);
+  --color-winter-accent: var(--winter-accent);
+  --color-winter-highlight: var(--winter-highlight);
+  --color-winter-text: var(--winter-text);
+  --color-winter-muted: var(--winter-muted);
+  --color-winter-ice: var(--winter-ice);
+  --color-winter-frost: var(--winter-frost);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --winter-primary: #204268;     
+    --winter-secondary: #669ed6;  
+    --winter-accent: #bed9dc;       
+    --winter-highlight: #eb8a21;   
+    --winter-text: #f0f0f0;       
+    --winter-muted: #a8a8a8;      
+    --winter-ice: #bed9dc;        
+    --winter-frost: rgba(255, 255, 255, 0.1);
+    
+    /* Typography */
+    --font-ep-title: "Didot", "Times New Roman", serif;
+    --font-body: Arial, Helvetica, sans-serif;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Fire animation keyframes */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Enhanced fire effects */
+.fire-flicker {
+  animation: flicker 0.5s infinite alternate;
+}
+
+.fire-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Snowflake variations */
+.snowflake-small {
+  font-size: 0.5rem;
+  opacity: 0.7;
+}
+
+.snowflake-medium {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.snowflake-large {
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.snowflake {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.snowflake-large {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.snowflake-small {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2));
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* Snowfall animation variations */
+@keyframes gentle-fall {
+  0% { transform: translateY(-100px) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(360deg); }
+}
+
+@keyframes sway-fall {
+  0%, 100% { transform: translateX(0px); }
+  50% { transform: translateX(20px); }
+}
