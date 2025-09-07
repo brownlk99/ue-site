@@ -1,6 +1,6 @@
 'use client';
-import WispEffect from "@/components/three/WispEffect";
+import MouseTrail from "@/components/three/MouseTrail";
 
 export default function Home() {
-  return <WispEffect />
+  return <MouseTrail />
 }

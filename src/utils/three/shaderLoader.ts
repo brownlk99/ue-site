@@ -1,24 +1,19 @@
-export async function loadShaders() {
-    try {
-      console.log('Starting to load shaders...')
-      const [vertexResponse, fragmentResponse] = await Promise.all([
-        fetch('/shaders/vapor/vaporVertex.glsl'),
-        fetch('/shaders/vapor/vaporFragment.glsl')
-      ])
-      console.log('Responses received:', vertexResponse.status, fragmentResponse.status)
+const cache = new Map<string, Promise<string>>();
 
-      if (!vertexResponse.ok || !fragmentResponse.ok) {
-        throw new Error('Failed to load shaders')
-      }
-
-      const [vertexShader, fragmentShader] = await Promise.all([
-        vertexResponse.text(),
-        fragmentResponse.text()
-      ])
-
-      return { vertexShader, fragmentShader }
-    } catch (error) {
-      console.error('Error loading shaders:', error)
-      throw error
-    }
+export async function loadShader(url: string): Promise<string> {
+  if (cache.has(url)) {
+    return cache.get(url)!;
   }
+  
+  // Create promise with error handling
+  const promise = fetch(url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to load shader ${url}: ${response.status}`);
+      }
+      return response.text();
+    });
+  
+  cache.set(url, promise);
+  return promise;
+}
