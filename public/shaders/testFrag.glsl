@@ -1,6 +1,6 @@
 precision mediump float;
 
-uniform vec2 mouse;  // Mouse position (-1 to 1)
+varying float vLife;
 
 void main() {
   // Color based on mouse position
@@ -12,11 +12,11 @@ void main() {
     discard;
   }
   
-  vec3 color = vec3(
-    mouse.x * 0.5 + 0.5,
-    mouse.y * 0.5 + 0.5,
-    1.0
-  );
+   // Fade based on life
+  float alpha = smoothstep(0.0, 0.1, vLife) * smoothstep(0.0, 0.2, vLife);
+  alpha *= 1.0 - (dist * 2.0);  // Edge fade
   
-  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // Pure red, ignore mouse for now
+  vec3 color = vec3(1.0, 0.8, 0.6);  // Warm color
+  
+  gl_FragColor = vec4(color * alpha, alpha);
 }
