@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { loadShader } from '@/utils/three/shaderLoader';
+import { SCENE_CONFIG } from '@/constants/scene';
+import { calculateVisibleDimensions } from '@/utils/three/mathUtils';
 
 export default function MouseTrail() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -11,12 +13,12 @@ export default function MouseTrail() {
     // Basic Three.js setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      75,
+      SCENE_CONFIG.camera.fov,
       window.innerWidth / window.innerHeight,
-      0.1,
-      1000
+      SCENE_CONFIG.camera.near,
+      SCENE_CONFIG.camera.far
     );
-    camera.position.z = 5;
+    camera.position.z = SCENE_CONFIG.camera.distance;
 
     // separate scene for GPU computation
     const simScene = new THREE.Scene();
@@ -30,12 +32,48 @@ export default function MouseTrail() {
     mountRef.current.appendChild(renderer.domElement);
 
     const mouse = new THREE.Vector2();
+    const mouseVelocity = new THREE.Vector2();
+    const prevMouse = new THREE.Vector2();
+    let lastMouseTime = performance.now();
 
     function onMouseMove(event: MouseEvent) {
       // Convert to -1 to 1 range
+      const currentTime = performance.now();
+      const deltaTime = Math.max(currentTime - lastMouseTime, 1);
+
+      prevMouse.copy(mouse);
+
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      mouseVelocity.x = (mouse.x - prevMouse.x) / deltaTime * 1000; // Convert to per second
+      mouseVelocity.y = (mouse.y - prevMouse.y) / deltaTime * 1000;
+  
+      lastMouseTime = currentTime;
     }
+
+    let simMaterial: THREE.RawShaderMaterial | null = null;
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      // Only update mouse scale if simMaterial exists
+      if (simMaterial) {
+        const { visibleWidth, visibleHeight } = calculateVisibleDimensions(
+          SCENE_CONFIG.camera.fov,
+          SCENE_CONFIG.camera.distance,
+          window.innerWidth / window.innerHeight,
+        );
+
+        simMaterial.uniforms.mouseScale.value.set(visibleWidth / 2, visibleHeight / 2);
+      }
+    }
+
+    // Add event listeners in outer scope
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('mousemove', onMouseMove);
 
     // Load shaders and create material
     async function setupShaders() {
@@ -45,15 +83,19 @@ export default function MouseTrail() {
       const simFragmentShader = await loadShader('/shaders/passthroughFrag.glsl');
 
       // Create a data texture with random positions
-      const textureSize = 8;  // 16x16 texture = 256 particles
+      const textureSize = SCENE_CONFIG.particles.defaultTextureSize;  // 16x16 texture = 256 particles
       const positionData = new Float32Array(textureSize * textureSize * 4);  // RGBA
 
       for(let i = 0; i < textureSize * textureSize; i++) {
         const i4 = i * 4;
-        positionData[i4 + 0] = (Math.random() - 0.5) * 2;  // x position
-        positionData[i4 + 1] = (Math.random() - 0.5) * 2;  // y position
-        positionData[i4 + 2] = 0;                          // z position
-        positionData[i4 + 3] = 1;                          // w (life, unused for now)
+        const r = (0.5 + Math.random() * 0.5) * 2;
+        const phi = (Math.random() - 0.5) * Math.PI;
+        const theta = Math.random() * Math.PI * 2;
+        
+        positionData[i4 + 0] = r * Math.cos(theta) * Math.cos(phi);
+        positionData[i4 + 1] = r * Math.sin(phi);
+        positionData[i4 + 2] = r * Math.sin(theta) * Math.cos(phi);
+        positionData[i4 + 3] = Math.random();
       }
 
       console.log('Sample positions:', {
@@ -83,16 +125,35 @@ export default function MouseTrail() {
         depthWrite: false // Don't write to depth buffer
       });
 
-      const simMaterial = new THREE.RawShaderMaterial({
+      simMaterial = new THREE.RawShaderMaterial({
         vertexShader: simVertexShader,
         fragmentShader: simFragmentShader,
         uniforms: {
-          texturePosition: { value: null },  // Will swap each frame
+          texturePosition: { value: null },
           resolution: { value: new THREE.Vector2(textureSize, textureSize) },
           time: { value: 0 },
-          mouse: { value: new THREE.Vector2(0, 0) }
+          mouse: { value: new THREE.Vector2(0, 0) },
+          mouseScale: { value: new THREE.Vector2(4, 4) },
+          speed: { value: SCENE_CONFIG.simulation.speed },
+          dieSpeed: { value: SCENE_CONFIG.simulation.dieSpeed },
+          radius: { value: SCENE_CONFIG.simulation.radius },
+          curlSize: { value: SCENE_CONFIG.simulation.curlSize },
+          attraction: { value: SCENE_CONFIG.simulation.attraction },
+          mouseVelocity: { value: new THREE.Vector2(0, 0) },
+          windRadius: { value: 1.5 },    // Radius of wind influence
+          interactionMode: { value: 0 }  // 0 = attraction, 1 = wind
         }
       });
+
+      const { visibleWidth, visibleHeight } = calculateVisibleDimensions(
+        SCENE_CONFIG.camera.fov,
+        SCENE_CONFIG.camera.distance,
+        window.innerWidth / window.innerHeight
+      );
+
+      simMaterial.uniforms.mouseScale = { 
+        value: new THREE.Vector2(visibleWidth / 2, visibleHeight / 2) 
+      };
 
       // Create render targets for ping-pong
       const renderTargetOptions = {
@@ -152,25 +213,31 @@ export default function MouseTrail() {
       console.log('Geometry attributes:', geometry.attributes);
       console.log('First few references:', references.slice(0, 10));
 
-      window.addEventListener('mousemove', onMouseMove)
-
       let currentRenderTarget = renderTarget1
       let nextRenderTarget = renderTarget2
-
-      function animate() {
+      let lastTime = 0;
+    
+      function animate(currentTime = 0) {
         requestAnimationFrame(animate);
+
+         if (!simMaterial) return;
+
+        // Calculate delta time
+        const dt = Math.min(currentTime - lastTime, 50); // Cap at 50ms to prevent huge jumps
+        lastTime = currentTime;
+        const deltaRatio = dt / 16.6667; // Normalize to 60fps
         
         // Update simulation uniforms
         simMaterial.uniforms.texturePosition.value = currentRenderTarget.texture;
-        simMaterial.uniforms.time.value += 0.05;
+        simMaterial.uniforms.time.value += 0.05 * deltaRatio;
         simMaterial.uniforms.mouse.value.copy(mouse);
+        simMaterial.uniforms.mouseVelocity.value.copy(mouseVelocity);
+        mouseVelocity.multiplyScalar(0.95); // Gradually reduce velocity
 
         // Render to next target
         renderer.setRenderTarget(nextRenderTarget);
         renderer.render(simScene, simCamera);
         renderer.setRenderTarget(null);
-
-        const pixels = new Float32Array(textureSize * textureSize * 4);
         
         // Update particle material to use new positions
         material.uniforms.texturePosition.value = nextRenderTarget.texture;
@@ -179,14 +246,14 @@ export default function MouseTrail() {
         [currentRenderTarget, nextRenderTarget] = [nextRenderTarget, currentRenderTarget];
         
         // Regular updates
-        material.uniforms.time.value += 0.05;
+        material.uniforms.time.value += 0.05 * deltaRatio;
         material.uniforms.mouse.value.copy(mouse);
         
         // Render particles
         renderer.render(scene, camera);
       }
       
-      animate();  // Start the loop
+      animate(0);
     }
 
     setupShaders();
@@ -194,7 +261,10 @@ export default function MouseTrail() {
     // Cleanup
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
-      mountRef.current?.removeChild(renderer.domElement);
+       window.removeEventListener('resize', onWindowResize);
+      if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
     };
   }, []);
 

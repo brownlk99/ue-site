@@ -17,5 +17,5 @@ void main() {
   //Size-based on life (fade-in/out)
   float fadeIn = smoothstep(0.0, 0.1, vLife);
   float fadeOut = smoothstep(0.0, 0.2, vLife);
-  gl_PointSize = 20.0;
+  gl_PointSize = 5.0 * fadeIn * fadeOut;
 }
