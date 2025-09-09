@@ -190,27 +190,7 @@ void main() {
     vec3 delta = followPosition - position;
     float distToMouse = length(delta);
     
-    if(interactionMode < 0.5) {
-      // ATTRACTION MODE (existing behavior)
-      position += delta * (0.005 + life * 0.01) * attraction * (1.0 - smoothstep(50.0, 350.0, distToMouse)) * speed;
-    } else {
-      // Apply wind force based on mouse velocity
-      vec3 windForce = vec3(mouseVelocity * mouseScale, 0.0);
-      
-      // Falloff based on distance from mouse
-      float windInfluence = 1.0 - smoothstep(0.0, windRadius, distToMouse);
-      
-      // Add some turbulence for realism
-      vec3 turbulence = curl(position * 2.0 + vec3(time), time * 0.2, 0.3) * 0.3;
-      
-      // Apply wind force
-      position += (windForce * windInfluence * windStrength + turbulence * windInfluence) * speed * 0.01;
-      
-      // "drag" to slow down particles over time
-      position *= 0.995;
-    }
-    
-    // Curl noise applies in both modes
+    position += delta * (0.005 + life * 0.01) * attraction * (1.0 - smoothstep(50.0, 350.0, distToMouse)) * speed;
     position += curl(position * curlSize, time * 0.1, 0.1 + (1.0 - life) * 0.1) * speed * 0.1;
   }
   gl_FragColor = vec4(position, life);

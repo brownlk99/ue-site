@@ -140,8 +140,6 @@ export default function MouseTrail() {
           curlSize: { value: SCENE_CONFIG.simulation.curlSize },
           attraction: { value: SCENE_CONFIG.simulation.attraction },
           mouseVelocity: { value: new THREE.Vector2(0, 0) },
-          windRadius: { value: 1.5 },    // Radius of wind influence
-          interactionMode: { value: 0 }  // 0 = attraction, 1 = wind
         }
       });
 
