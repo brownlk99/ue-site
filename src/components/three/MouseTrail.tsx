@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { loadShader } from '@/utils/three/shaderLoader';
 import { SCENE_CONFIG } from '@/constants/scene';
+import { PARTICLE_CONFIG } from '@/constants/particles';
 import { calculateVisibleDimensions } from '@/utils/three/mathUtils';
+import { loadParticleShaders, loadSimulationShaders } from '@/three/shaders';
 
 export default function MouseTrail() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -77,13 +78,16 @@ export default function MouseTrail() {
 
     // Load shaders and create material
     async function setupShaders() {
-      const vertexShader = await loadShader('/shaders/testVert.glsl');
-      const fragmentShader = await loadShader('/shaders/testFrag.glsl');
-      const simVertexShader = await loadShader('/shaders/passthroughVert.glsl');
-      const simFragmentShader = await loadShader('/shaders/passthroughFrag.glsl');
+      const [particleShaders, simulationShaders] = await Promise.all([
+        loadParticleShaders(),
+        loadSimulationShaders()
+      ]);
+      
+      const { vertex: vertexShader, fragment: fragmentShader } = particleShaders;
+      const { vertex: simVertexShader, fragment: simFragmentShader } = simulationShaders;
 
       // Create a data texture with random positions
-      const textureSize = SCENE_CONFIG.particles.defaultTextureSize;  // 16x16 texture = 256 particles
+      const textureSize = PARTICLE_CONFIG.defaultTextureSize;  // 64x64 texture = 4096 particles
       const positionData = new Float32Array(textureSize * textureSize * 4);  // RGBA
 
       for(let i = 0; i < textureSize * textureSize; i++) {
@@ -134,11 +138,11 @@ export default function MouseTrail() {
           time: { value: 0 },
           mouse: { value: new THREE.Vector2(0, 0) },
           mouseScale: { value: new THREE.Vector2(4, 4) },
-          speed: { value: SCENE_CONFIG.simulation.speed },
-          dieSpeed: { value: SCENE_CONFIG.simulation.dieSpeed },
-          radius: { value: SCENE_CONFIG.simulation.radius },
-          curlSize: { value: SCENE_CONFIG.simulation.curlSize },
-          attraction: { value: SCENE_CONFIG.simulation.attraction },
+          speed: { value: PARTICLE_CONFIG.simulation.speed },
+          dieSpeed: { value: PARTICLE_CONFIG.simulation.dieSpeed },
+          radius: { value: PARTICLE_CONFIG.simulation.radius },
+          curlSize: { value: PARTICLE_CONFIG.simulation.curlSize },
+          attraction: { value: PARTICLE_CONFIG.simulation.attraction },
           mouseVelocity: { value: new THREE.Vector2(0, 0) },
         }
       });
