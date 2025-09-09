@@ -4,9 +4,11 @@ import { SCENE_CONFIG } from '@/constants/scene';
 import { PARTICLE_CONFIG } from '@/constants/particles';
 import { calculateVisibleDimensions } from '@/utils/three/mathUtils';
 import { loadParticleShaders, loadSimulationShaders } from '@/three/shaders';
+import { useMouseTracking } from '@/hooks/useMouseTracking';
 
 export default function MouseTrail() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const mouse = useMouseTracking();
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -32,26 +34,6 @@ export default function MouseTrail() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    const mouse = new THREE.Vector2();
-    const mouseVelocity = new THREE.Vector2();
-    const prevMouse = new THREE.Vector2();
-    let lastMouseTime = performance.now();
-
-    function onMouseMove(event: MouseEvent) {
-      // Convert to -1 to 1 range
-      const currentTime = performance.now();
-      const deltaTime = Math.max(currentTime - lastMouseTime, 1);
-
-      prevMouse.copy(mouse);
-
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      mouseVelocity.x = (mouse.x - prevMouse.x) / deltaTime * 1000; // Convert to per second
-      mouseVelocity.y = (mouse.y - prevMouse.y) / deltaTime * 1000;
-  
-      lastMouseTime = currentTime;
-    }
 
     let simMaterial: THREE.RawShaderMaterial | null = null;
 
@@ -74,7 +56,6 @@ export default function MouseTrail() {
 
     // Add event listeners in outer scope
     window.addEventListener('resize', onWindowResize);
-    window.addEventListener('mousemove', onMouseMove);
 
     // Load shaders and create material
     async function setupShaders() {
@@ -143,7 +124,6 @@ export default function MouseTrail() {
           radius: { value: PARTICLE_CONFIG.simulation.radius },
           curlSize: { value: PARTICLE_CONFIG.simulation.curlSize },
           attraction: { value: PARTICLE_CONFIG.simulation.attraction },
-          mouseVelocity: { value: new THREE.Vector2(0, 0) },
         }
       });
 
@@ -233,8 +213,6 @@ export default function MouseTrail() {
         simMaterial.uniforms.texturePosition.value = currentRenderTarget.texture;
         simMaterial.uniforms.time.value += 0.05 * deltaRatio;
         simMaterial.uniforms.mouse.value.copy(mouse);
-        simMaterial.uniforms.mouseVelocity.value.copy(mouseVelocity);
-        mouseVelocity.multiplyScalar(0.95); // Gradually reduce velocity
 
         // Render to next target
         renderer.setRenderTarget(nextRenderTarget);
@@ -262,7 +240,6 @@ export default function MouseTrail() {
 
     // Cleanup
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
        window.removeEventListener('resize', onWindowResize);
       if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);
