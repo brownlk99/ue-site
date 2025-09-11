@@ -10,6 +10,7 @@ uniform float radius;
 uniform float curlSize;
 uniform float attraction;
 uniform vec2 mouseScale;
+uniform vec2 mouseVelocity;
 uniform float windStrength;
 uniform float windRadius;
 uniform float interactionMode; // 0 = attraction, 1 = wind
